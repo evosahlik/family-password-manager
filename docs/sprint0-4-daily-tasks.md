@@ -251,14 +251,14 @@ Outputs:
 ### Sunday, Feb 16 (30 min) - Sprint 0 Check-in
 
 **Checklist:**
-- [ ] Domain registered and accessible in Route 53 console
-- [ ] AWS Budget alert set up
-- [ ] GitHub repo created with README
-- [ ] Node.js, AWS CLI installed and working
-- [ ] Architecture diagram created
-- [ ] CloudFormation template skeleton exists
-- [ ] React app runs locally (`npm start` works)
-- [ ] Crypto test code runs in browser
+- [X] Domain registered and accessible in Route 53 console
+- [X] AWS Budget alert set up
+- [X] GitHub repo created with README
+- [X] Node.js, AWS CLI installed and working
+- [X] Architecture diagram created
+- [X] CloudFormation template skeleton exists
+- [X] React app runs locally (`npm start` works)
+- [X] Crypto test code runs in browser
 
 **If any item is unchecked:** Spend 30 minutes finishing it. These are foundations for everything else.
 
@@ -291,7 +291,7 @@ Outputs:
    - **Don't generate secret** (for public web apps)
    - Enable auth flows: `ALLOW_USER_PASSWORD_AUTH`, `ALLOW_REFRESH_TOKEN_AUTH`
 10. **Save outputs:**
-    - User Pool ID (starts with your region, e.g., `us-west-2_ABC123`)
+    - User Pool ID (starts with your region, e.g., `us-east-1_ABC123`)
     - App Client ID (long string of random characters)
     - Save these in a text file temporarily
 
@@ -306,7 +306,7 @@ Outputs:
    ```javascript
    const config = {
      cognito: {
-       region: 'us-west-2', // Your AWS region
+       region: 'us-east-1', // Your AWS region
        userPoolId: 'us-west-2_ABC123', // From Monday's task
        userPoolWebClientId: 'abcd1234567890', // From Monday's task
      },

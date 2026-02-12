@@ -1,4 +1,13 @@
 # Secure Family Password Manager - AWS Architecture Case Study
+# Family Password Manager
+
+AWS-based password management system with zero-knowledge encryption.
+
+## Architecture
+
+![Architecture Diagram](./docs/architecture-diagram.svg)
+
+## Overview
 
 **Project Type:** Personal portfolio project demonstrating AWS cloud architecture  
 **Role:** Solutions Architect & Developer  

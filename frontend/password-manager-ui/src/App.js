@@ -1,5 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
+import './utils/crypto-test.js' 
 
 function App() {
   return (

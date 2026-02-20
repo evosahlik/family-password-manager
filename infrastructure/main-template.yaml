@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Family Password Manager - Main Stack'
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: 'Your registered domain name'
+    Default: 'vosahlik-vault.com'
+
+  Environment:
+    Type: String
+    Default: 'prod'
+    AllowedValues:
+      - dev
+      - prod
+
+Resources:
+  # S3 Bucket for hosting React app
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'password-manager-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: Project
+          Value: PasswordManager
+
+  # Bucket Policy to allow public read
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${WebsiteBucket.Arn}/*'
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Password Manager CloudFront Distribution
+        DefaultRootObject: index.html
+        Aliases:
+          - vosahlik-vault.com
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:944508510504:certificate/8a17aa1a-8fed-47c7-89e3-13742828b116
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt WebsiteBucket.RegionalDomainName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 86400
+          MaxTTL: 31536000
+          Compress: true
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+Outputs:
+  BucketName:
+    Value: !Ref WebsiteBucket
+    Description: 'S3 bucket name for website'
+  
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+    Description: 'S3 website URL (for testing)'
+  
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
+    Description: 'CloudFront Distribution ID'
+  
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: 'CloudFront domain name'
+  
+  FinalURL:
+    Value: !Sub 'https://vosahlik-vault.com'
+    Description: 'Your final custom domain URL'  
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+    Description: 'S3 website URL'

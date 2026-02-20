@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Family Password Manager - Main Stack (Infrastructure Only)'
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: 'Your registered domain name'
+    Default: 'vosahlik-vault.com'
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - prod
+
+Resources:
+  # --------------------- DATABASE ---------------------
+  PasswordVaultTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub '${Environment}-PasswordVault'
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: itemTypeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: itemTypeId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # --------------------- IAM ROLE FOR LAMBDA ---------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-PasswordVaultRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaLoggingPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: DynamoDBReadWritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                Resource: !GetAtt PasswordVaultTable.Arn
+
+Outputs:
+  PasswordVaultTableName:
+    Description: 'The name of the PasswordVault DynamoDB table'
+    Value: !Ref PasswordVaultTable
+    Export:
+      Name: FamilyPasswordManager-Dev-TableName

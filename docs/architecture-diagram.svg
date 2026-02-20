@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" style="background-color: white;">
+  <!-- Title -->
+  <text x="600" y="30" font-size="24" font-weight="bold" text-anchor="middle" fill="#232F3E">
+    Family Password Manager - AWS Architecture
+  </text>
+  
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="20" y="50" width="200" height="120" fill="#F0F0F0" stroke="#666" stroke-width="1" rx="5"/>
+    <text x="30" y="70" font-size="14" font-weight="bold" fill="#232F3E">Legend</text>
+    <line x1="30" y1="85" x2="100" y2="85" stroke="#FF9900" stroke-width="3" marker-end="url(#arrowOrange)"/>
+    <text x="110" y="90" font-size="12" fill="#232F3E">Data Flow</text>
+    <line x1="30" y1="105" x2="100" y2="105" stroke="#146EB4" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="110" y="110" font-size="12" fill="#232F3E">Authentication</text>
+    <line x1="30" y1="125" x2="100" y2="125" stroke="#DD344C" stroke-width="3"/>
+    <text x="110" y="130" font-size="12" fill="#232F3E">HTTPS/TLS</text>
+    <rect x="30" y="140" width="15" height="15" fill="#5294CF"/>
+    <text x="50" y="152" font-size="12" fill="#232F3E">Encrypted Data</text>
+  </g>
+  
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#FF9900" />
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#DD344C" />
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#146EB4" />
+    </marker>
+  </defs>
+  
+  <!-- User/Browser Layer -->
+  <g id="user-layer">
+    <rect x="500" y="200" width="200" height="100" fill="#E8F4F8" stroke="#232F3E" stroke-width="2" rx="10"/>
+    <text x="600" y="230" font-size="16" font-weight="bold" text-anchor="middle" fill="#232F3E">User Browser</text>
+    <text x="600" y="250" font-size="12" text-anchor="middle" fill="#666">Windows / Mac / iOS / Android</text>
+    <text x="600" y="270" font-size="11" text-anchor="middle" fill="#0073BB">React SPA</text>
+    <text x="600" y="285" font-size="10" text-anchor="middle" fill="#5294CF">🔐 Client-Side Encryption</text>
+  </g>
+  
+  <!-- Route 53 -->
+  <g id="route53">
+    <rect x="150" y="350" width="120" height="80" fill="#8C4FFF" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="210" y="375" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Route 53</text>
+    <text x="210" y="395" font-size="10" text-anchor="middle" fill="white">DNS Resolution</text>
+    <text x="210" y="410" font-size="9" text-anchor="middle" fill="white">yourdomain.com</text>
+    <text x="210" y="422" font-size="9" text-anchor="middle" fill="white">→ CloudFront</text>
+  </g>
+  
+  <!-- CloudFront + ACM -->
+  <g id="cloudfront">
+    <rect x="350" y="350" width="140" height="80" fill="#8C4FFF" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="420" y="375" font-size="14" font-weight="bold" text-anchor="middle" fill="white">CloudFront</text>
+    <text x="420" y="395" font-size="10" text-anchor="middle" fill="white">CDN + Edge Cache</text>
+    <text x="420" y="410" font-size="9" text-anchor="middle" fill="white">TLS 1.3 Termination</text>
+    <rect x="360" y="415" width="120" height="12" fill="#DD344C" rx="2"/>
+    <text x="420" y="424" font-size="8" text-anchor="middle" fill="white">ACM Certificate</text>
+  </g>
+  
+  <!-- S3 Static Website -->
+  <g id="s3">
+    <rect x="530" y="350" width="140" height="80" fill="#569A31" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="600" y="375" font-size="14" font-weight="bold" text-anchor="middle" fill="white">S3 Bucket</text>
+    <text x="600" y="395" font-size="10" text-anchor="middle" fill="white">Static Website Hosting</text>
+    <text x="600" y="410" font-size="9" text-anchor="middle" fill="white">React Build Files</text>
+    <text x="600" y="422" font-size="9" text-anchor="middle" fill="white">(HTML, JS, CSS)</text>
+  </g>
+  
+  <!-- API Gateway -->
+  <g id="api-gateway">
+    <rect x="730" y="350" width="140" height="80" fill="#FF4F8B" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="800" y="375" font-size="14" font-weight="bold" text-anchor="middle" fill="white">API Gateway</text>
+    <text x="800" y="395" font-size="10" text-anchor="middle" fill="white">REST API</text>
+    <text x="800" y="410" font-size="9" text-anchor="middle" fill="white">Rate Limiting</text>
+    <text x="800" y="422" font-size="9" text-anchor="middle" fill="white">CORS Handling</text>
+  </g>
+  
+  <!-- Cognito -->
+  <g id="cognito">
+    <rect x="920" y="350" width="140" height="80" fill="#DD344C" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="990" y="375" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Cognito</text>
+    <text x="990" y="395" font-size="10" text-anchor="middle" fill="white">User Pools</text>
+    <text x="990" y="410" font-size="9" text-anchor="middle" fill="white">Authentication</text>
+    <text x="990" y="422" font-size="9" text-anchor="middle" fill="white">JWT Tokens</text>
+  </g>
+  
+  <!-- Lambda -->
+  <g id="lambda">
+    <rect x="530" y="520" width="140" height="80" fill="#FF9900" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="600" y="545" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Lambda</text>
+    <text x="600" y="565" font-size="10" text-anchor="middle" fill="white">Node.js 18</text>
+    <text x="600" y="580" font-size="9" text-anchor="middle" fill="white">CRUD Operations</text>
+    <text x="600" y="592" font-size="9" text-anchor="middle" fill="white">passwordCRUD function</text>
+  </g>
+  
+  <!-- DynamoDB -->
+  <g id="dynamodb">
+    <rect x="530" y="670" width="140" height="90" fill="#2E73B8" stroke="#232F3E" stroke-width="2" rx="5"/>
+    <text x="600" y="695" font-size="14" font-weight="bold" text-anchor="middle" fill="white">DynamoDB</text>
+    <text x="600" y="715" font-size="10" text-anchor="middle" fill="white">Table: PasswordVault</text>
+    <text x="600" y="730" font-size="9" text-anchor="middle" fill="white">🔐 Encrypted at Rest</text>
+    <text x="600" y="743" font-size="9" text-anchor="middle" fill="white">On-Demand Billing</text>
+    <text x="600" y="755" font-size="9" text-anchor="middle" fill="white">PITR Enabled</text>
+  </g>
+  
+  <!-- CloudFormation (Infrastructure) -->
+  <g id="cloudformation">
+    <rect x="50" y="670" width="140" height="80" fill="#232F3E" stroke="#FF9900" stroke-width="3" rx="5"/>
+    <text x="120" y="695" font-size="14" font-weight="bold" text-anchor="middle" fill="white">CloudFormation</text>
+    <text x="120" y="715" font-size="10" text-anchor="middle" fill="white">Infrastructure as Code</text>
+    <text x="120" y="730" font-size="9" text-anchor="middle" fill="white">Deploys All Resources</text>
+    <text x="120" y="742" font-size="9" text-anchor="middle" fill="white">Version Controlled</text>
+  </g>
+  
+  <!-- Flow Arrows -->
+  
+  <!-- User to Route 53 -->
+  <line x1="600" y1="300" x2="210" y2="350" stroke="#DD344C" stroke-width="3" marker-end="url(#arrowRed)"/>
+  <text x="380" y="320" font-size="10" fill="#DD344C">1. HTTPS Request</text>
+  
+  <!-- Route 53 to CloudFront -->
+  <line x1="270" y1="390" x2="350" y2="390" stroke="#DD344C" stroke-width="3" marker-end="url(#arrowRed)"/>
+  <text x="285" y="383" font-size="10" fill="#DD344C">2. DNS</text>
+  
+  <!-- CloudFront to S3 -->
+  <line x1="490" y1="390" x2="530" y2="390" stroke="#DD344C" stroke-width="3" marker-end="url(#arrowRed)"/>
+  <text x="495" y="383" font-size="10" fill="#DD344C">3. Static Files</text>
+  
+  <!-- Browser to API Gateway -->
+  <line x1="700" y1="270" x2="780" y2="350" stroke="#FF9900" stroke-width="3" marker-end="url(#arrowOrange)"/>
+  <text x="710" y="300" font-size="10" fill="#FF9900">4. API Calls</text>
+  <text x="710" y="313" font-size="9" fill="#5294CF">(with encrypted payload)</text>
+  
+  <!-- API Gateway to Cognito (auth check) -->
+  <line x1="870" y1="380" x2="920" y2="380" stroke="#146EB4" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowBlue)"/>
+  <text x="875" y="373" font-size="10" fill="#146EB4">5. Validate JWT</text>
+  
+  <!-- API Gateway to Lambda -->
+  <line x1="780" y1="430" x2="620" y2="520" stroke="#FF9900" stroke-width="3" marker-end="url(#arrowOrange)"/>
+  <text x="680" y="470" font-size="10" fill="#FF9900">6. Invoke</text>
+  
+  <!-- Lambda to DynamoDB -->
+  <line x1="600" y1="600" x2="600" y2="670" stroke="#FF9900" stroke-width="3" marker-end="url(#arrowOrange)"/>
+  <text x="610" y="635" font-size="10" fill="#FF9900">7. Read/Write</text>
+  <text x="610" y="648" font-size="9" fill="#5294CF">(encrypted blobs)</text>
+  
+  <!-- CloudFormation manages all -->
+  <line x1="190" y1="710" x2="500" y2="710" stroke="#FF9900" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="320" y="703" font-size="10" fill="#FF9900">Manages Infrastructure</text>
+  
+  <!-- Encryption Callouts -->
+  <g id="encryption-callouts">
+    <!-- Client-side encryption box -->
+    <rect x="750" y="200" width="180" height="100" fill="#FFF9E6" stroke="#5294CF" stroke-width="2" rx="5"/>
+    <text x="840" y="220" font-size="12" font-weight="bold" text-anchor="middle" fill="#232F3E">Zero-Knowledge Encryption</text>
+    <text x="840" y="240" font-size="10" text-anchor="middle" fill="#333">Master Password</text>
+    <text x="840" y="255" font-size="10" text-anchor="middle" fill="#333">↓ PBKDF2 (100K iter)</text>
+    <text x="840" y="270" font-size="10" text-anchor="middle" fill="#333">↓ AES-256-GCM Key</text>
+    <text x="840" y="285" font-size="10" text-anchor="middle" fill="#333">↓ Encrypt in Browser</text>
+    <text x="840" y="295" font-size="8" text-anchor="middle" fill="#DD344C">AWS never sees plaintext!</text>
+  </g>
+  
+  <!-- Cost annotation -->
+  <text x="600" y="870" font-size="14" font-weight="bold" text-anchor="middle" fill="#232F3E">Estimated Cost: $25/year</text>
+  <text x="600" y="888" font-size="11" text-anchor="middle" fill="#666">Domain: $12 | Route53: $6 | S3+CloudFront: $2 | DynamoDB: $5 | Lambda/API Gateway: Free Tier</text>
+  
+  <!-- Security Layers Label -->
+  <text x="50" y="530" font-size="11" font-weight="bold" fill="#DD344C">Security Layers:</text>
+  <text x="50" y="545" font-size="9" fill="#333">• TLS 1.3 in transit</text>
+  <text x="50" y="558" font-size="9" fill="#333">• Client-side encryption</text>
+  <text x="50" y="571" font-size="9" fill="#333">• JWT authentication</text>
+  <text x="50" y="584" font-size="9" fill="#333">• IAM least privilege</text>
+  <text x="50" y="597" font-size="9" fill="#333">• DynamoDB encryption at rest</text>
+  <text x="50" y="610" font-size="9" fill="#333">• Rate limiting</text>
+</svg>

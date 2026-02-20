@@ -1,0 +1,184 @@
+Architecture Explanation - The Complete Flow
+The User Journey (Following the Numbers in the Diagram)
+1. User Opens Browser → Route 53 (DNS Resolution)
+
+User types https://vosahlik-vault.com in their browser
+Route 53 (AWS's DNS service) translates that domain to CloudFront's IP address
+This happens in milliseconds, user doesn't notice
+
+2. Route 53 → CloudFront (Content Delivery)
+
+Browser connects to nearest CloudFront edge location (there are 400+ worldwide)
+CloudFront checks: "Do I have this website cached?"
+If YES: Serves cached React app instantly (~50ms response)
+If NO: Fetches from S3, caches it, then serves it
+
+3. CloudFront → S3 (Static Website Hosting)
+
+S3 bucket contains your React app's built files (index.html, bundle.js, CSS)
+These are just static files - no server running
+CloudFront pulls them once, then caches for 24 hours (you configure this)
+Key Point: Your React app downloads to the user's browser and runs there
+
+4. Browser → API Gateway (The Actual Password Operations)
+
+Now the React app is running in the user's browser
+When user clicks "Save Password", React encrypts it first (in browser)
+React sends HTTPS POST to https://api.vosahlik-vault.com/passwords
+Payload: {encryptedData: "jkl3n4...", iv: "abc123...", userId: "xyz"}
+Critical: The plaintext password NEVER leaves the browser
+
+5. API Gateway → Cognito (Security Checkpoint)
+
+API Gateway receives the request
+Before doing anything, it checks: "Is this user logged in?"
+Looks for JWT token in Authorization: Bearer <token> header
+Calls Cognito: "Is this token valid? Who does it belong to?"
+Cognito responds: "Yes, valid. UserId = xyz789"
+If token is invalid/expired: 401 Unauthorized - request stops here
+
+6. API Gateway → Lambda (Business Logic)
+
+Token is valid, so API Gateway invokes your Lambda function
+Passes along: HTTP method (POST/GET/DELETE), encrypted payload, userId from token
+Lambda wakes up (or is already warm) and executes your Node.js code
+Lambda extracts: "This is a CREATE operation for userId xyz789"
+
+7. Lambda → DynamoDB (Data Persistence)
+
+Lambda calls DynamoDB: putItem() with:
+
+Partition Key: userId#xyz789
+Sort Key: ENTRY#uuid-abc-123
+Data: {encryptedData: "...", iv: "...", salt: "...", createdAt: "2025-02-11"}
+
+
+DynamoDB stores it (encrypted at rest with AWS-managed keys - additional layer)
+Lambda returns success to API Gateway
+API Gateway returns success to browser
+React shows: "✅ Password saved!"
+
+
+The Encryption Dance (Critical Security Concept)
+This is the zero-knowledge architecture - the most important part:
+On First Registration:
+
+User creates account in Cognito (email + password for login)
+User creates master password (different from login password!)
+React generates random salt (24 bytes)
+React derives encryption key: PBKDF2(masterPassword, salt, 100000 iterations)
+Stores salt in DynamoDB (salt is NOT secret - it's just to make each user's key unique)
+
+Every Time User Saves a Password:
+
+User types Netflix password: MyNetfl1xP@ss
+React generates random IV (12 bytes)
+React encrypts: AES-GCM(plaintext="MyNetfl1xP@ss", key=derivedKey, iv=randomIV)
+Result: encryptedBlob = "j3kl5n..." (looks like gibberish)
+Sends to AWS: {encryptedData: "j3kl5n...", iv: "abc123"}
+AWS never sees "MyNetfl1xP@ss" - only sees the encrypted blob
+
+Every Time User Retrieves a Password:
+
+Lambda fetches from DynamoDB: {encryptedData: "j3kl5n...", iv: "abc123"}
+Returns encrypted data to browser
+React decrypts in browser: AES-GCM-decrypt(ciphertext, key, iv) → "MyNetfl1xP@ss"
+Shows password to user
+
+Why This Is Secure:
+
+AWS employees can't read your passwords (they only see encrypted blobs)
+If DynamoDB is hacked, attacker gets gibberish
+If someone steals your AWS credentials, still can't read passwords
+Only risk: Someone guesses your master password (hence 100K PBKDF2 iterations to slow brute force)
+
+
+The Components - What Each Does
+Route 53 (Purple - DNS)
+
+Job: Translate yourdomain.com → CloudFront IP
+Cost: $0.50/month for hosted zone + $12/year domain registration
+Why It's Here: You need a user-friendly URL (not some random AWS URL)
+
+CloudFront (Purple - CDN)
+
+Job: Distribute your website globally, handle HTTPS, cache files
+Cost: ~$0.15/month for your traffic levels
+Why It's Here: Fast loading worldwide + free SSL certificate via ACM + protects S3 from direct public access
+
+ACM (AWS Certificate Manager) (Red Badge on CloudFront)
+
+Job: Provides free SSL/TLS certificate for HTTPS
+Cost: Free
+Why It's Here: Browsers require HTTPS for crypto.subtle API (your encryption won't work without it!)
+
+S3 (Green - Storage)
+
+Job: Stores your React app files (HTML, JavaScript, CSS)
+Cost: ~$0.03/month (you have <5MB of files)
+Why It's Here: Cheapest way to host static website, no server to manage
+
+API Gateway (Pink - API Management)
+
+Job: Receives API calls from browser, validates auth, routes to Lambda
+Cost: Free (1M requests/month free tier, you'll use ~1000)
+Why It's Here: Handles CORS, throttling, auth integration - so Lambda doesn't have to
+
+Cognito (Red - Authentication)
+
+Job: User registration, login, JWT token generation
+Cost: Free (50K monthly active users free tier, you have 5 users)
+Why It's Here: Building auth from scratch takes 40+ hours and is risky. Cognito does it in 3 hours.
+
+Lambda (Orange - Compute)
+
+Job: Runs your Node.js code for CRUD operations
+Cost: Free (1M requests/month free tier)
+Why It's Here: No servers to patch/maintain, auto-scales, pay only when code runs
+
+DynamoDB (Blue - Database)
+
+Job: Stores encrypted password entries
+Cost: ~$0.40/month (on-demand billing, you'll do ~1000 operations/month)
+Why It's Here: Fast, cheap for small datasets, no server management, built-in encryption at rest
+
+CloudFormation (Black - Infrastructure as Code)
+
+Job: Creates all the above resources from a YAML file
+Cost: Free
+Why It's Here: You can delete entire stack and recreate it in 10 minutes. Version control your infrastructure.
+
+
+Security Layers (Why It's Hard to Hack)
+Layer 1: Transport (HTTPS/TLS 1.3)
+
+All communication encrypted in transit
+Man-in-the-middle attacks can't read traffic
+
+Layer 2: Authentication (Cognito JWT)
+
+Only logged-in users can call API
+Tokens expire after 1 hour (must re-authenticate)
+API Gateway rejects invalid tokens before Lambda even wakes up
+
+Layer 3: Authorization (Lambda + DynamoDB)
+
+Lambda extracts userId from JWT
+DynamoDB condition: userId = tokenUserId (prevents cross-user access)
+Even if someone steals a valid token, they only access their own data
+
+Layer 4: Client-Side Encryption
+
+Master password never sent to AWS
+AWS stores only encrypted blobs
+Even AWS engineers can't read your passwords
+
+Layer 5: Encryption at Rest (DynamoDB)
+
+Additional layer - DynamoDB encrypts entire database with AWS keys
+Protects against physical disk theft from data centers
+
+Layer 6: Rate Limiting
+
+API Gateway: 100 requests/minute per IP
+Prevents brute force attacks

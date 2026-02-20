@@ -2,10 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Family Password Manager - Main Stack (Infrastructure Only)'
 
 Parameters:
-  DomainName:
-    Type: String
-    Description: 'Your registered domain name'
-    Default: 'vosahlik-vault.com'
   Environment:
     Type: String
     Default: 'dev'
@@ -14,7 +10,7 @@ Parameters:
       - prod
 
 Resources:
-  # --------------------- DATABASE ---------------------
+  # ... (PasswordVaultTable and LambdaExecutionRole resources remain unchanged)
   PasswordVaultTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -32,7 +28,6 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
-  # --------------------- IAM ROLE FOR LAMBDA ---------------------
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -68,9 +63,76 @@ Resources:
                   - dynamodb:Query
                 Resource: !GetAtt PasswordVaultTable.Arn
 
+  # --------------------- API GATEWAY ---------------------
+  PasswordVaultApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${Environment}-PasswordVaultApi'
+      ProtocolType: HTTP
+      Description: 'API for the Family Password Manager'
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        AllowHeaders:
+          - '*'
+
+  # --- CUSTOM DOMAIN RESOURCES ---
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Sub '${Environment}-api.vosahlik-vault.com' # <<< FIX
+      DomainNameConfigurations:
+        - CertificateArn: 'arn:aws:acm:us-east-1:944508510504:certificate/f06578f1-0a14-4151-900f-ee9597098725'
+          EndpointType: REGIONAL
+
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      DomainName: !Ref ApiDomain
+      Stage: !Ref DefaultStage
+    DependsOn:
+      - ApiDomain
+
+  # --- INTEGRATION & ROUTE ---
+  CreateEntryIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${Environment}-PasswordVaultFunction/invocations'
+      PayloadFormatVersion: '2.0'
+
+  CreateEntryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      RouteKey: 'GET /entries' # <<< TEMPORARY CHANGE FOR VERIFICATION
+      Target: !Join ['/', ['integrations', !Ref CreateEntryIntegration]]
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      StageName: '$default'
+      AutoDeploy: true
+
 Outputs:
   PasswordVaultTableName:
     Description: 'The name of the PasswordVault DynamoDB table'
     Value: !Ref PasswordVaultTable
     Export:
       Name: FamilyPasswordManager-Dev-TableName
+
+  ApiEndpoint:
+    Description: 'The standard endpoint URL for the HTTP API'
+    Value: !GetAtt PasswordVaultApi.ApiEndpoint
+
+  CustomDomainUrl:
+    Description: 'The custom domain URL for the API'
+    Value: !Sub 'https://${Environment}-api.vosahlik-vault.com' # <<< FIX

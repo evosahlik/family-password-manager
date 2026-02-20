@@ -1,0 +1,52 @@
+Project Changelog & Session Summary
+Date: February 20, 2026
+Primary Goal: Complete Sprint 3 (Database & Lambda) and begin Sprint 4 (API Gateway).
+
+Sprint 3 Completion: A Manual Deployment Victory
+The initial part of the session was dedicated to overcoming a series of critical, environment-specific roadblocks that prevented a standard CLI-based deployment.
+
+Key Accomplishments:
+
+Diagnosed and Bypassed CloudShell Limitations: We definitively proved that the AWS CloudShell environment was unsuitable for sam local invoke and sam build due to a cascade of issues, including:
+
+Docker architecture mismatches (arm64 vs. x86_64).
+
+Insufficient disk space (no space left on device).
+
+A persistent, broken Lambda service cache (Unable to import module 'lambda_function').
+
+Pivoted to a Successful Manual Deployment Strategy:
+
+Created and deployed a simplified CloudFormation template (template.yaml) that successfully provisioned the PasswordVaultTable (DynamoDB) and the LambdaExecutionRole (IAM).
+
+Manually created the dev-PasswordVaultFunction in the Lambda console, linking it to the correct IAM role and setting the TABLE_NAME environment variable.
+
+Resolved the persistent import error by creating a new main.py file and updating the Lambda handler to main.handler, proving the issue was a broken cache on the AWS backend.
+
+Sprint 3 Goal Achieved: The session concluded with a successful end-to-end test from the Lambda console, proving that the function could write an item to the DynamoDB table.
+
+Sprint 4 Progress: API Gateway and Custom Domain
+With the backend in place, we began integrating it with the outside world via API Gateway.
+
+Key Accomplishments:
+
+API Design: Created the API_DESIGN.md documentation, outlining the endpoints and methods for the password vault API.
+
+Infrastructure Provisioned: Updated the CloudFormation stack to create the following API Gateway resources:
+
+An HTTP API (PasswordVaultApi).
+
+An integration and route for the POST /entries endpoint.
+
+A default stage for deployment.
+
+A custom domain resource (ApiDomain) for dev-api.vosahlik-vault.com, linked to your existing ACM certificate.
+
+Permissions Granted: Successfully added the necessary Lambda resource policy to allow API Gateway to invoke the dev-PasswordVaultFunction.
+
+Final DNS Configuration: Created the final CNAME record in Route 53 to point dev-api.vosahlik-vault.com to the API Gateway's domain name.
+
+Current Status:
+
+The entire infrastructure is now fully configured. We are waiting for the final DNS record to propagate across the internet, which will make the custom URL https://dev-api.vosahlik-vault.com/entries live and active. The final step of Sprint 4 will be to successfully test this endpoint.
+

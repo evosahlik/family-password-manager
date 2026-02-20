@@ -1,3 +1,6 @@
+import logo from './logo.svg';
+import './App.css';
+import './utils/crypto-test.js'
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CryptoProvider } from './context/CryptoContext';

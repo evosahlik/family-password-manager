@@ -1,118 +1,302 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Family Password Manager - Main Stack'
+Description: 'Family Password Manager - Backend Stack'
 
 Parameters:
-  DomainName:
-    Type: String
-    Description: 'Your registered domain name'
-    Default: 'vosahlik-vault.com'
-
   Environment:
     Type: String
-    Default: 'prod'
+    Default: 'dev'
     AllowedValues:
       - dev
       - prod
 
 Resources:
-  # S3 Bucket for hosting React app
-  WebsiteBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub 'password-manager-${AWS::AccountId}'
-      WebsiteConfiguration:
-        IndexDocument: index.html
-        ErrorDocument: index.html
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
-      Tags:
-        - Key: Project
-          Value: PasswordManager
 
-  # Bucket Policy to allow public read
-  WebsiteBucketPolicy:
-    Type: AWS::S3::BucketPolicy
+  # --- DYNAMODB ---
+  PasswordVaultTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
-      Bucket: !Ref WebsiteBucket
-      PolicyDocument:
+      TableName: !Sub '${Environment}-PasswordVault'
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: itemTypeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: itemTypeId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # --- IAM ROLE ---
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-PasswordVaultRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: '*'
-            Action: 's3:GetObject'
-            Resource: !Sub '${WebsiteBucket.Arn}/*'
-  # CloudFront Distribution
-  CloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaLoggingPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: DynamoDBReadWritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                Resource: !GetAtt PasswordVaultTable.Arn
+
+  # --- LAMBDA FUNCTIONS ---
+  CreateEntryFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
     Properties:
-      DistributionConfig:
-        Enabled: true
-        Comment: Password Manager CloudFront Distribution
-        DefaultRootObject: index.html
-        Aliases:
-          - vosahlik-vault.com
-        ViewerCertificate:
-          AcmCertificateArn: arn:aws:acm:us-east-1:944508510504:certificate/8a17aa1a-8fed-47c7-89e3-13742828b116
-          SslSupportMethod: sni-only
-          MinimumProtocolVersion: TLSv1.2_2021
-        Origins:
-          - Id: S3Origin
-            DomainName: !GetAtt WebsiteBucket.RegionalDomainName
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: http-only
-        DefaultCacheBehavior:
-          TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-          CachedMethods:
-            - GET
-            - HEAD
-          ForwardedValues:
-            QueryString: false
-            Cookies:
-              Forward: none
-          MinTTL: 0
-          DefaultTTL: 86400
-          MaxTTL: 31536000
-          Compress: true
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
-        HttpVersion: http2
-        PriceClass: PriceClass_100
+      FunctionName: !Sub '${Environment}-CreateEntry'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 'password-manager-944508510504'
+        S3Key: 'lambda/createEntry.zip'
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PasswordVaultTable
+
+  ListEntriesFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
+    Properties:
+      FunctionName: !Sub '${Environment}-ListEntries'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 'password-manager-944508510504'
+        S3Key: 'lambda/listEntries.zip'
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PasswordVaultTable
+
+  UpdateEntryFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
+    Properties:
+      FunctionName: !Sub '${Environment}-UpdateEntry'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 'password-manager-944508510504'
+        S3Key: 'lambda/updateEntry.zip'
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PasswordVaultTable
+
+  DeleteEntryFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
+    Properties:
+      FunctionName: !Sub '${Environment}-DeleteEntry'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 'password-manager-944508510504'
+        S3Key: 'lambda/deleteEntry.zip'
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PasswordVaultTable
+
+  # --- LAMBDA PERMISSIONS ---
+  CreateEntryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateEntryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PasswordVaultApi}/*'
+
+  ListEntriesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ListEntriesFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PasswordVaultApi}/*'
+
+  UpdateEntryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateEntryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PasswordVaultApi}/*'
+
+  DeleteEntryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteEntryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PasswordVaultApi}/*'
+
+  # --- API GATEWAY ---
+  PasswordVaultApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${Environment}-PasswordVaultApi'
+      ProtocolType: HTTP
+      Description: 'API for the Family Password Manager'
+      CorsConfiguration:
+        AllowOrigins:
+          - 'https://vosahlik-vault.com'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+
+  CognitoAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      AuthorizerType: JWT
+      Name: CognitoAuthorizer
+      IdentitySource:
+        - '$request.header.Authorization'
+      JwtConfiguration:
+        Audience:
+          - '593903apijinant9porklfp39c'
+        Issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XLGNUlZkM'
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # --- INTEGRATIONS ---
+  CreateEntryIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CreateEntryFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ListEntriesIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ListEntriesFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  UpdateEntryIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt UpdateEntryFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  DeleteEntryIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt DeleteEntryFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  # --- ROUTES ---
+  CreateEntryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      RouteKey: 'POST /entries'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Join ['/', ['integrations', !Ref CreateEntryIntegration]]
+
+  ListEntriesRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      RouteKey: 'GET /entries'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Join ['/', ['integrations', !Ref ListEntriesIntegration]]
+
+  UpdateEntryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      RouteKey: 'PUT /entries/{itemTypeId}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Join ['/', ['integrations', !Ref UpdateEntryIntegration]]
+
+  DeleteEntryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      RouteKey: 'DELETE /entries/{itemTypeId}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Join ['/', ['integrations', !Ref DeleteEntryIntegration]]
+
+  # --- CUSTOM DOMAIN ---
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: 'dev-api.vosahlik-vault.com'
+      DomainNameConfigurations:
+        - CertificateArn: 'arn:aws:acm:us-east-1:944508510504:certificate/f06578f1-0a14-4151-900f-ee9597098725'
+          EndpointType: REGIONAL
+
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      ApiId: !Ref PasswordVaultApi
+      DomainName: !Ref ApiDomain
+      Stage: !Ref DefaultStage
+    DependsOn:
+      - ApiDomain
+      - DefaultStage
+
 Outputs:
-  BucketName:
-    Value: !Ref WebsiteBucket
-    Description: 'S3 bucket name for website'
-  
-  WebsiteURL:
-    Value: !GetAtt WebsiteBucket.WebsiteURL
-    Description: 'S3 website URL (for testing)'
-  
-  CloudFrontDistributionId:
-    Value: !Ref CloudFrontDistribution
-    Description: 'CloudFront Distribution ID'
-  
-  CloudFrontDomainName:
-    Value: !GetAtt CloudFrontDistribution.DomainName
-    Description: 'CloudFront domain name'
-  
-  FinalURL:
-    Value: !Sub 'https://vosahlik-vault.com'
-    Description: 'Your final custom domain URL'  
-  WebsiteURL:
-    Value: !GetAtt WebsiteBucket.WebsiteURL
-    Description: 'S3 website URL'
+  PasswordVaultTableName:
+    Value: !Ref PasswordVaultTable
+    Description: 'DynamoDB table name'
+
+  ApiEndpoint:
+    Value: !GetAtt PasswordVaultApi.ApiEndpoint
+    Description: 'API Gateway endpoint URL'
+
+  ApiCustomDomainUrl:
+    Value: 'https://dev-api.vosahlik-vault.com'
+    Description: 'API custom domain URL'

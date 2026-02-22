@@ -108,3 +108,20 @@ This sprint focused on creating the backend infrastructure, including the databa
     5.  **Definitive Solution**: Proved the issue was a broken cache state on the Lambda backend associated with the filename `lambda_function.py`. The issue was resolved by deleting the old file, creating a new file named `main.py`, pasting the code into it, and updating the function's handler to `main.handler`.
 - **Sprint 3 Complete**: Successfully executed the function via the Lambda console's test feature, achieving a `statusCode: 201` and verifying that an item was written to the DynamoDB table.
 
+"Hey Claude! Continuing work on my family password manager project. Here's where we are:
+Project: Zero-knowledge password manager on AWS serverless stack (React + Node.js + DynamoDB + Lambda + API Gateway + Cognito). Portfolio piece for AWS Solutions Architect Associate cert prep.
+Stack situation: Three CloudFormation stacks exist in us-east-1:
+
+family-password-manager-dev — UPDATE_COMPLETE — owns the DynamoDB table (dev-PasswordVault) and likely S3/CloudFront/Cognito from Sprint 1
+password-manager-prod — UPDATE_COMPLETE — prod infrastructure
+vosahlik-vault — ROLLBACK_COMPLETE (dead, needs deletion) — our failed attempt to create a separate backend stack
+
+The problem we hit: Can't create a new vosahlik-vault stack because family-password-manager-dev already owns the dev-PasswordVault DynamoDB table. Solution is to add the backend resources (Lambda functions, API Gateway, IAM role) directly into the family-password-manager-dev stack instead.
+What's built so far:
+
+✅ Sprints 0-1: Auth (Cognito), frontend deployed to S3/CloudFront at https://vosahlik-vault.com
+✅ Sprint 2: Client-side AES-256-GCM encryption module complete
+🔄 Sprint 3 in progress: DynamoDB table exists, need to add Lambda + API Gateway to family-password-manager-dev stack
+
+Four Node.js Lambda functions are written and ready (createEntry, listEntries, updateEntry, deleteEntry) using AWS SDK v3, extracting userId from Cognito JWT claims via event.requestContext.authorizer.jwt.claims.sub.
+Next step: Delete dead vosahlik-vault stack, then update family-password-manager-dev template to add Lambda functions, API Gateway, Cognito authorizer, and routes. Please attach the current template.yaml file when starting."**

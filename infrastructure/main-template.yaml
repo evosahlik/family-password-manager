@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Family Password Manager - Backend Stack'
+Description: 'Family Password Manager - Backend Stack (Cognito included)'
 
 Parameters:
   Environment:
@@ -10,6 +10,45 @@ Parameters:
       - prod
 
 Resources:
+
+  # --- COGNITO ---
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${Environment}-PasswordVaultUserPool'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailMessage: 'Your Family Password Manager verification code is {####}'
+        EmailSubject: 'Verify your Family Password Manager account'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${Environment}-PasswordVaultClient'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
 
   # --- DYNAMODB ---
   PasswordVaultTable:
@@ -189,8 +228,8 @@ Resources:
         - '$request.header.Authorization'
       JwtConfiguration:
         Audience:
-          - '593903apijinant9porklfp39c'
-        Issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XLGNUlZkM'
+          - !Ref UserPoolClient
+        Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
 
   DefaultStage:
     Type: AWS::ApiGatewayV2::Stage
@@ -280,15 +319,23 @@ Resources:
 
   ApiMapping:
     Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn:
+      - ApiDomain
+      - DefaultStage
     Properties:
       ApiId: !Ref PasswordVaultApi
       DomainName: !Ref ApiDomain
       Stage: !Ref DefaultStage
-    DependsOn:
-      - ApiDomain
-      - DefaultStage
 
 Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+    Description: 'Cognito User Pool ID — update your frontend config'
+
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Description: 'Cognito App Client ID — update your frontend config'
+
   PasswordVaultTableName:
     Value: !Ref PasswordVaultTable
     Description: 'DynamoDB table name'

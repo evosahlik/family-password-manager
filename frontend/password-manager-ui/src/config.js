@@ -1,13 +1,9 @@
 const config = {
+  region: 'us-east-1',
   cognito: {
-    region: 'us-east-1', // Your AWS region
-    userPoolId: 'us-east-1_rrhQZVbrG', // From Monday's task
-    userPoolWebClientId: '7pqb2m4c295mf11kmvojsgqq0h', // From Monday's task
+    userPoolId: 'us-east-1_j4tyfYZl2',
+    userPoolWebClientId: '3511qa43dtohv2hv7iuh9su6b4',
   },
-  api: {
-    // We'll add this in Sprint 4
-    endpoint: ''
-  }
+  apiBaseUrl: 'https://dev-api.vosahlik-vault.com',
 };
-
 export default config;
